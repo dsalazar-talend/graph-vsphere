@@ -124,6 +124,12 @@ export class APIClient {
       );
       return response.json();
     } catch (err) {
+    if (err.statusCode === 500) {
+      this.logger.info(
+        `Skipping request for endpoint ${uri}. ${err.status}; ${err.statusText}`,
+      );
+      return null;
+    } else {
       throw new IntegrationProviderAPIError({
         endpoint: uri,
         status: err.status,
