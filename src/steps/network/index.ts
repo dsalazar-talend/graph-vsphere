@@ -28,34 +28,40 @@ export async function buildVmNetworkRelationship({
   logger,
 }: IntegrationStepExecutionContext<IntegrationConfig>) {
   const apiClient = getOrCreateAPIClient(instance.config, logger);
+  let vmQueryFailCount: number = 0;
 
   await jobState.iterateEntities(
     { _type: Entities.VIRTUAL_MACHINE._type },
     async (vmEntity) => {
       const vm = await apiClient.getVm(vmEntity.vm as string);
-      for (const nics of Object.values(vm.nics)) {
-        // Depending on version, we may need to slightly modify where
-        // we're pulling network information from.
-        if (!nics.backing) {
-          nics.backing = nics.value.backing;
-        }
-        const networkEntity = await jobState.findEntity(
-          getNetworkKey(nics.backing.network),
-        );
+      try {
+        for (const nics of Object.values(vm.nics)) {
+          // Depending on version, we may need to slightly modify where
+          // we're pulling network information from.
+          if (!nics.backing) {
+            nics.backing = nics.value.backing;
+          }
+          const networkEntity = await jobState.findEntity(
+            getNetworkKey(nics.backing.network),
+          );
 
-        if (networkEntity) {
-          const vmUsesNetwork = createDirectRelationship({
-            _class: RelationshipClass.USES,
-            from: vmEntity,
-            to: networkEntity,
-          });
-          // We need to check that the relationship doesn't yet exist
-          // for those instances where a VM has multiple nics on the
-          // same network.
-          if (!jobState.hasKey(vmUsesNetwork._key)) {
-            await jobState.addRelationship(vmUsesNetwork);
+          if (networkEntity) {
+            const vmUsesNetwork = createDirectRelationship({
+              _class: RelationshipClass.USES,
+              from: vmEntity,
+              to: networkEntity,
+            });
+            // We need to check that the relationship doesn't yet exist
+            // for those instances where a VM has multiple nics on the
+            // same network.
+            if (!jobState.hasKey(vmUsesNetwork._key)) {
+              await jobState.addRelationship(vmUsesNetwork);
+            }
           }
         }
+      } catch (err) {
+        logger.info(`Unable to query vcenter/vm/${vmEntity.vm as string} endpoint.`);
+        vmQueryFailCount++;
       }
     },
   );
