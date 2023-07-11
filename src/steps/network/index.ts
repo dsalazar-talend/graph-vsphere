@@ -2,6 +2,7 @@ import {
   createDirectRelationship,
   IntegrationStep,
   IntegrationStepExecutionContext,
+  IntegrationWarnEventName,
   RelationshipClass,
 } from '@jupiterone/integration-sdk-core';
 
@@ -28,6 +29,7 @@ export async function buildVmNetworkRelationship({
   logger,
 }: IntegrationStepExecutionContext<IntegrationConfig>) {
   const apiClient = getOrCreateAPIClient(instance.config, logger);
+  let vmQuerySuccessCount: number = 0;
   let vmQueryFailCount: number = 0;
 
   await jobState.iterateEntities(
@@ -60,11 +62,17 @@ export async function buildVmNetworkRelationship({
           }
         }
       } catch (err) {
-        logger.info(`Unable to query vcenter/vm/${vmEntity.vm as string} endpoint.`);
+        logger.info(`Unable to query vcenter/vm/${vmEntity.vm as string} endpoint.`,);
         vmQueryFailCount++;
       }
     },
   );
+  if (vmQueryFailCount > 0) {
+    logger.publishWarnEvent({
+      name: IntegrationWarnEventName.MissingPermission,
+      description: `Could not query all VM information for VMs.  Success = ${vmQuerySuccessCount}  Failed = ${vmQueryFailCount}`,
+    });
+  }
 }
 
 export const networkSteps: IntegrationStep<IntegrationConfig>[] = [
