@@ -124,7 +124,9 @@ export class APIClient {
       );
       return response.json();
     } catch (err) {
-      this.logger.info(`Failed to execute request() for ${uri}. Error=${err.statusText}`,);
+      this.logger.info(
+        `Failed to execute request() for ${uri}. Error=${err.statusText}`,
+      );
       return { value: null };
     }
   }
