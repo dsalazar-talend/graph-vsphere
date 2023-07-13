@@ -124,15 +124,8 @@ export class APIClient {
       );
       return response.json();
     } catch (err) {
-      if (err.statusCode === 500) {
-        return { value: null };
-      } else {
-        throw new IntegrationProviderAPIError({
-          endpoint: uri,
-          status: err.status,
-          statusText: err.statusText,
-        });
-      }
+      this.logger.info(`Failed to execute request() for ${uri}. Error=${err.statusText}`,);
+      return { value: null };
     }
   }
 
